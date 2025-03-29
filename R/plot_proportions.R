@@ -7,9 +7,13 @@
 #' @param data A data frame, data frame extension (e.g. a tibble),
 #' or a survey design object.
 #' @param condition <[`data-masking`][rlang::args_data_masking]> A condition
-#' defining a proportion (see examples).
+#' defining a proportion, or a [dplyr::tibble()] defining several proportions
+#' (see examples).
 #' @param by <[`tidy-select`][dplyr::dplyr_tidy_select ]> List of variables to
 #' group by (comparison is done separately for each variable).
+#' @param drop_na_by Remove `NA` values in `by` variables?
+#' @param convert_continuous Should continuous variables (with 5 unique values
+#' or more) be converted to quartiles (using `cut_quartiles()`)?
 #' @param geom Geometry to use for plotting proportions (`"bar"` by default).
 #' @param ... Additional arguments passed to the geom defined by `geom`.
 #' @param show_overall Display "Overall" column?
@@ -53,6 +57,7 @@
 #'   )
 #'
 #' \donttest{
+#'
 #' titanic |>
 #'   plot_proportions(
 #'     Survived == "Yes",
@@ -101,6 +106,40 @@
 #'     show_pvalues = FALSE
 #'  )
 #'
+#' # defining several proportions
+#' iris |>
+#'   plot_proportions(
+#'     dplyr::tibble(
+#'       "Long sepal" = Sepal.Length > 6,
+#'       "Short petal" = Petal.Width < 1
+#'     ),
+#'     by = Species,
+#'     fill = "palegreen"
+#'   )
+#'
+#' iris |>
+#'   plot_proportions(
+#'     dplyr::tibble(
+#'       "Long sepal" = Sepal.Length > 6,
+#'       "Short petal" = Petal.Width < 1
+#'     ),
+#'     by = Species,
+#'     fill = "palegreen",
+#'     flip = TRUE
+#'   )
+#'
+#' # works with continuous by variables
+#' iris |>
+#'   labelled::set_variable_labels(
+#'     Sepal.Length = "Length of the sepal"
+#'   ) |>
+#'   plot_proportions(
+#'     Species == "versicolor",
+#'     by = dplyr::contains("leng"),
+#'     fill = "plum",
+#'     colour = "plum4"
+#'   )
+#'
 #' # works with survey object
 #' titanic |>
 #'   srvyr::as_survey() |>
@@ -109,13 +148,16 @@
 #'     by = c(Class, Sex),
 #'     fill = "darksalmon",
 #'     color = "black",
-#'     show_overall_line = TRUE
+#'     show_overall_line = TRUE,
+#'     labels_labeller = scales::label_percent(.1)
 #'  )
 #' }
 plot_proportions <- function(
   data,
   condition,
   by = NULL,
+  drop_na_by = FALSE,
+  convert_continuous = TRUE,
   geom = "bar",
   ...,
   show_overall = TRUE,
@@ -141,6 +183,7 @@ plot_proportions <- function(
 ) {
   # variable identification
   vars <- data |> dplyr::select({{ by }}) |> colnames()
+
   if (show_overall || length(vars) == 0) {
     data <- data |> dplyr::mutate(.overall = overall_label)
     if (inherits(data, "survey.design")) {
@@ -150,35 +193,71 @@ plot_proportions <- function(
     }
     vars <- c(".overall", vars)
   }
-  data <- data |>
-    dplyr::mutate(.condition = factor({{ condition }}, c(FALSE, TRUE))) |>
-    dplyr::filter(!is.na(.data$.condition))
+
+  # conversion of numeric by variables
+  data <-
+    data |>
+    dplyr::mutate(
+      dplyr::across(
+        dplyr::all_of(vars),
+        .convert_continuous,
+        convert_continuous
+      )
+    )
+
+  # computation of conditions
+  condition_vars <- data |>
+    dplyr::mutate({{ condition }}, .keep = "none") |>
+    colnames()
+  data <-
+    data |>
+    dplyr::mutate({{ condition }}) |>
+    dplyr::mutate(
+      dplyr::across(
+        dplyr::all_of(condition_vars),
+        \(x) {
+          factor(x, levels = c(FALSE, TRUE))
+        }
+      )
+    )
 
   # proportion computation
-  d <- vars |>
-    purrr::map(
-      ~ data |>
-        dplyr::mutate(level = .data[[.x]]) |>
-        proportion(
-          .data$.condition,
-          .by = dplyr::all_of("level"),
-          .conf.int = show_ci,
-          .scale = 1,
-          .conf.level = conf_level
-        ) |>
-        dplyr::mutate(
-          variable = .x
-        )
-    ) |>
-    dplyr::bind_rows() |>
-    dplyr::ungroup() |>
-    dplyr::filter(.data$.condition == "TRUE") |>
-    dplyr::mutate(
-      num_level = paste(dplyr::row_number(), .data$level, sep = "_"),
-      num_level = forcats::fct_inorder(.data$num_level),
-      variable = forcats::fct_inorder(.data$variable)
-    ) |>
-    dplyr::select(-.data$.condition)
+  fn_one_cond <- function(cond_var) {
+    vars |>
+      purrr::map(
+        ~ data |>
+          dplyr::mutate(level = .data[[.x]]) |>
+          proportion(
+            .data[[cond_var]],
+            .by = dplyr::all_of("level"),
+            .conf.int = show_ci,
+            .scale = 1,
+            .conf.level = conf_level,
+            .na.rm = TRUE,
+            .drop_na_by = drop_na_by
+          ) |>
+          dplyr::mutate(
+            variable = .x,
+            condition = cond_var
+          )
+      ) |>
+      dplyr::bind_rows() |>
+      dplyr::ungroup() |>
+      dplyr::filter(.data[[cond_var]] == "TRUE") |>
+      dplyr::mutate(
+        num_level = paste(dplyr::row_number(), .data$level, sep = "_"),
+        num_level = forcats::fct_inorder(.data$num_level),
+        variable = forcats::fct_inorder(.data$variable)
+      ) |>
+      dplyr::select(-.data[[cond_var]])
+  }
+
+  d <-
+    condition_vars |>
+    purrr::map(fn_one_cond) |>
+    dplyr::bind_rows()
+  d$condition <- forcats::fct_inorder(d$condition) |> forcats::fct_rev()
+
   if (flip) d$num_level <- d$num_level |> forcats::fct_rev()
 
   # variable labels
@@ -204,52 +283,61 @@ plot_proportions <- function(
   d$prop_label <- labels_labeller(d$prop)
   d$y_label <- 0
 
-  # selecting only variables with at least 2 levels
-  v2 <-
-    d |>
-    dplyr::count(.data$variable, name = "n") |>
-    dplyr::filter(.data$n >= 2) |>
-    dplyr::pull("variable") |>
-    as.character()
-
   # computing p-values
   pvalues <- NULL
-  if (show_pvalues && length(v2) > 0) {
+  if (show_pvalues) {
     if (inherits(data, "survey.design")) {
       test_fun <- survey::svychisq # nolint
     } else {
       pvalues_test <- match.arg(pvalues_test)
       if (pvalues_test == "fisher") {
         test_fun <- function(formula, data) {
-          stats::xtabs(formula, data) |>
+          stats::xtabs(formula, data, addNA = !drop_na_by) |>
             stats::fisher.test(simulate.p.value = TRUE)
         }
       } else {
         test_fun <- function(formula, data) {
-          stats::xtabs(formula, data) |> stats::chisq.test()
+          stats::xtabs(formula, data, addNA = !drop_na_by) |>
+            stats::chisq.test()
         }
       }
     }
 
-    pvalues <- v2 |>
-      purrr::map(
-        ~ paste("~ .condition +", .x) |>
-          as.formula() |>
-          test_fun(data) |>
-          purrr::pluck("p.value")
+    p_one_cond <- function(cond_var) {
+      v2 <- # selecting only variables with at least 2 levels
+        d |>
+        dplyr::filter(condition == cond_var) |>
+        dplyr::count(.data$variable, name = "n") |>
+        dplyr::filter(.data$n >= 2) |>
+        dplyr::pull("variable") |>
+        as.character()
+
+      res <- v2 |>
+        purrr::map(
+          ~ paste0("~ `", cond_var, "` + ", .x) |>
+            as.formula() |>
+            test_fun(data) |>
+            purrr::pluck("p.value")
+        )
+      res <- unlist(res)
+      res <- dplyr::tibble(
+        variable = v2,
+        condition = cond_var,
+        p = res
       )
-    pvalues <- unlist(pvalues)
-    pvalues <- dplyr::tibble(
-      variable = v2,
-      p = pvalues
-    )
+    }
+
+    pvalues <-
+      condition_vars |>
+      purrr::map(p_one_cond) |>
+      dplyr::bind_rows()
   }
 
   if (return_data) {
     if (!is.null(pvalues))
       d <-
         d |>
-        dplyr::left_join(pvalues, by = "variable")
+        dplyr::left_join(pvalues, by = c("variable", "condition"))
     return(d)
   }
 
@@ -286,13 +374,17 @@ plot_proportions <- function(
       ggplot2::stat_identity(geom = geom, ...)
 
   # plotting p-values
-  if (show_pvalues && !is.null(pvalues)) {
+  if (show_pvalues && !is.null(pvalues) && nrow(pvalues) > 0) {
     pvalues <-
       pvalues |>
       dplyr::left_join(
         d |>
           dplyr::arrange(.data$num_level) |>
-          dplyr::group_by(.data$variable, .data$variable_label) |>
+          dplyr::group_by(
+            .data$variable,
+            .data$variable_label,
+            .data$condition
+          ) |>
           dplyr::summarise(num_level = dplyr::last(.data$num_level)),
         by = "variable"
       )
@@ -336,15 +428,25 @@ plot_proportions <- function(
 
   # overall line
   if (show_overall_line) {
-    yintercept <-
-      data |>
-      proportion(.data$.condition, .scale = 1) |>
-      dplyr::filter(.data$.condition == "TRUE") |>
-      dplyr::pull("prop")
+    yintercepts <-
+      condition_vars |>
+      purrr::map(
+        ~ data |>
+          proportion(.data[[.x]], .scale = 1, .na.rm = TRUE) |>
+          dplyr::filter(.data[[.x]] == "TRUE") |>
+          dplyr::pull("prop")
+      ) |>
+      unlist()
+    yintercepts <- dplyr::tibble(
+      condition = condition_vars,
+      yintercept = yintercepts
+    )
+
     plot <-
       plot +
       ggplot2::geom_hline(
-        yintercept = yintercept,
+        data = yintercepts,
+        mapping = ggplot2::aes(yintercept = .data$yintercept),
         color = overall_line_color,
         linetype = overall_line_type,
         linewidth = overall_line_width
@@ -361,7 +463,14 @@ plot_proportions <- function(
         stringr::str_remove(x, "^[0-9]*_")
       }
     ) +
-    ggplot2::theme_light()
+    ggplot2::theme_light() +
+    ggplot2::theme(strip.background = ggplot2::element_rect(fill = "grey50"))
+
+  if (length(condition_vars) > 1) {
+    cond_facet <- ggplot2::vars(.data$condition)
+  } else {
+    cond_facet <- NULL
+  }
 
   if (flip) {
     plot <-
@@ -369,6 +478,7 @@ plot_proportions <- function(
       ggplot2::coord_flip() +
       ggplot2::facet_grid(
         rows = ggplot2::vars(.data$variable_label),
+        cols = cond_facet,
         scales = "free_y",
         space = "free_y",
         labeller = facet_labeller,
@@ -382,13 +492,14 @@ plot_proportions <- function(
           face = "bold", angle = 0, color = "black",
           hjust = 0, vjust = 1
         ),
-        strip.background = ggplot2::element_blank()
+        strip.background.y = ggplot2::element_blank()
       )
   } else {
     plot <-
       plot +
       ggplot2::facet_grid(
         cols = ggplot2::vars(.data$variable_label),
+        rows = cond_facet,
         scales = "free_x",
         space = "free_x",
         labeller = facet_labeller
@@ -400,4 +511,51 @@ plot_proportions <- function(
   }
 
   plot
+}
+
+.convert_continuous <- function(x, convert_continuous) {
+  if (is.numeric(x) && length(unique(x)) > 4 && convert_continuous) {
+    cut_quartiles(x)
+  } else if (is.numeric(x)) {
+    res <- factor(x)
+    labelled::var_label(res) <- labelled::var_label(x)
+    res
+  } else {
+    x
+  }
+}
+
+#' @rdname plot_proportions
+#' @note
+#' `stratified_by()` is an helper facilitating a stratified analysis
+#' (see examples). Please note that only a simple condition could be passed to
+#' that function.
+#' @export
+#' @param strata Stratification variable
+#' @examples
+#'
+#' # stratified analysis
+#' titanic |>
+#'   plot_proportions(
+#'     (Survived == "Yes") |>  stratified_by(Sex),
+#'     by = Class,
+#'     mapping = ggplot2::aes(fill = condition)
+#'   ) +
+#'   ggplot2::theme(legend.position = "bottom") +
+#'   ggplot2::labs(fill = NULL)
+stratified_by <- function(condition, strata) {
+  if (is.numeric(strata)) strata <- .convert_continuous(strata)
+  if (!is.factor(strata)) strata <- factor(strata)
+  res <-
+    strata |>
+    levels() |>
+    purrr::map(
+      ~ dplyr::if_else(
+        strata == .x,
+        condition,
+        NA
+      )
+    )
+  names(res) <- levels(strata)
+  dplyr::as_tibble(res)
 }

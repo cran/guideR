@@ -2,12 +2,15 @@
 % Please edit documentation in R/plot_proportions.R
 \name{plot_proportions}
 \alias{plot_proportions}
+\alias{stratified_by}
 \title{Plot proportions by sub-groups}
 \usage{
 plot_proportions(
   data,
   condition,
   by = NULL,
+  drop_na_by = FALSE,
+  convert_continuous = TRUE,
   geom = "bar",
   ...,
   show_overall = TRUE,
@@ -31,16 +34,24 @@ plot_proportions(
   flip = FALSE,
   return_data = FALSE
 )
+
+stratified_by(condition, strata)
 }
 \arguments{
 \item{data}{A data frame, data frame extension (e.g. a tibble),
 or a survey design object.}
 
 \item{condition}{<\code{\link[rlang:args_data_masking]{data-masking}}> A condition
-defining a proportion (see examples).}
+defining a proportion, or a \code{\link[dplyr:reexports]{dplyr::tibble()}} defining several proportions
+(see examples).}
 
 \item{by}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}> List of variables to
 group by (comparison is done separately for each variable).}
+
+\item{drop_na_by}{Remove \code{NA} values in \code{by} variables?}
+
+\item{convert_continuous}{Should continuous variables (with 5 unique values
+or more) be converted to quartiles (using \code{cut_quartiles()})?}
 
 \item{geom}{Geometry to use for plotting proportions (\code{"bar"} by default).}
 
@@ -88,11 +99,18 @@ group by (comparison is done separately for each variable).}
 \item{flip}{Flip x and y axis?}
 
 \item{return_data}{Return data used instead of the plot?}
+
+\item{strata}{Stratification variable}
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 See \code{\link[=proportion]{proportion()}} for more details on the way proportions and confidence
 intervals are computed.
+}
+\note{
+\code{stratified_by()} is an helper facilitating a stratified analysis
+(see examples). Please note that only a simple condition could be passed to
+that function.
 }
 \examples{
 titanic |>
@@ -110,6 +128,7 @@ titanic |>
   )
 
 \donttest{
+
 titanic |>
   plot_proportions(
     Survived == "Yes",
@@ -158,6 +177,40 @@ titanic |>
     show_pvalues = FALSE
  )
 
+# defining several proportions
+iris |>
+  plot_proportions(
+    dplyr::tibble(
+      "Long sepal" = Sepal.Length > 6,
+      "Short petal" = Petal.Width < 1
+    ),
+    by = Species,
+    fill = "palegreen"
+  )
+
+iris |>
+  plot_proportions(
+    dplyr::tibble(
+      "Long sepal" = Sepal.Length > 6,
+      "Short petal" = Petal.Width < 1
+    ),
+    by = Species,
+    fill = "palegreen",
+    flip = TRUE
+  )
+
+# works with continuous by variables
+iris |>
+  labelled::set_variable_labels(
+    Sepal.Length = "Length of the sepal"
+  ) |>
+  plot_proportions(
+    Species == "versicolor",
+    by = dplyr::contains("leng"),
+    fill = "plum",
+    colour = "plum4"
+  )
+
 # works with survey object
 titanic |>
   srvyr::as_survey() |>
@@ -166,8 +219,19 @@ titanic |>
     by = c(Class, Sex),
     fill = "darksalmon",
     color = "black",
-    show_overall_line = TRUE
+    show_overall_line = TRUE,
+    labels_labeller = scales::label_percent(.1)
  )
 }
+
+# stratified analysis
+titanic |>
+  plot_proportions(
+    (Survived == "Yes") |>  stratified_by(Sex),
+    by = Class,
+    mapping = ggplot2::aes(fill = condition)
+  ) +
+  ggplot2::theme(legend.position = "bottom") +
+  ggplot2::labs(fill = NULL)
 }
 \keyword{univar}

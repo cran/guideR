@@ -1,7 +1,7 @@
 Package: guideR
 Type: Package
 Title: Miscellaneous Statistical Functions Used in 'guide-R'
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: c(
     person(
       "Joseph", "Larmarange", ,
@@ -30,8 +30,8 @@ Suggests: broom.helpers, FactoMineR, nnet, spelling, survey, survival,
 Config/testthat/edition: 3
 Language: en-US
 NeedsCompilation: no
-Packaged: 2025-03-16 12:07:50 UTC; josep
+Packaged: 2025-03-29 12:04:40 UTC; josep
 Author: Joseph Larmarange [aut, cre] (<https://orcid.org/0000-0001-7097-700X>)
 Maintainer: Joseph Larmarange <joseph@larmarange.net>
 Repository: CRAN
-Date/Publication: 2025-03-16 12:20:01 UTC
+Date/Publication: 2025-03-29 12:20:02 UTC
