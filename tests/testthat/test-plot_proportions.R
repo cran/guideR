@@ -80,4 +80,26 @@ test_that("plot_proportions() does not produce an error", {
         by = Class
       )
   )
+
+  expect_no_error(
+    titanic |>
+      plot_proportions(
+        dummy_proportions(Class),
+        by = Sex,
+        mapping = ggplot2::aes(fill = level)
+      )
+  )
+
+  expect_no_error(
+    titanic |>
+      plot_proportions(
+        dplyr::tibble(
+          Survived = Survived == "Yes",
+          Male = Sex == "Male"
+        ),
+        by = c(Class),
+        mapping = ggplot2::aes(fill = condition),
+        free_scale = TRUE
+      )
+  )
 })

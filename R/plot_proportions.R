@@ -1,8 +1,14 @@
 #' Plot proportions by sub-groups
 #'
-#' `r lifecycle::badge("experimental")`
-#' See [proportion()] for more details on the way proportions and confidence
-#' intervals are computed.
+#' Plot one or several proportions (defined by logical conditions) by
+#' sub-groups. See [proportion()] for more details on the way proportions and
+#' confidence intervals are computed. By default, return a bar plot, but other
+#' geometries could be used (see examples). `stratified_by()` is an helper
+#' function facilitating a stratified analyses (i.e. proportions by groups
+#' stratified according to a third variable, see examples).
+#' `dummy_proportions()` is an helper to easily convert a categorical variable
+#' into dummy variables and therefore showing the proportion of each level of
+#' the original variable (see examples).
 #'
 #' @param data A data frame, data frame extension (e.g. a tibble),
 #' or a survey design object.
@@ -38,6 +44,7 @@
 #' @param overall_line_width Line width of the overall line.
 #' @param facet_labeller Labeller function for strip labels.
 #' @param flip Flip x and y axis?
+#' @param free_scale Allow y axis to vary between conditions?
 #' @param return_data Return data used instead of the plot?
 #' @export
 #' @keywords univar
@@ -107,6 +114,28 @@
 #'  )
 #'
 #' # defining several proportions
+#'
+#' titanic |>
+#'   plot_proportions(
+#'     dplyr::tibble(
+#'       Survived = Survived == "Yes",
+#'       Male = Sex == "Male"
+#'     ),
+#'     by = c(Class),
+#'     mapping = ggplot2::aes(fill = condition)
+#'   )
+#'
+#' titanic |>
+#'   plot_proportions(
+#'     dplyr::tibble(
+#'       Survived = Survived == "Yes",
+#'       Male = Sex == "Male"
+#'     ),
+#'     by = c(Class),
+#'     mapping = ggplot2::aes(fill = condition),
+#'     free_scale = TRUE
+#'   )
+#'
 #' iris |>
 #'   plot_proportions(
 #'     dplyr::tibble(
@@ -179,6 +208,7 @@ plot_proportions <- function(
   overall_line_width = .5,
   facet_labeller = ggplot2::label_wrap_gen(width = 50, multi_line = TRUE),
   flip = FALSE,
+  free_scale = FALSE,
   return_data = FALSE
 ) {
   # variable identification
@@ -256,7 +286,7 @@ plot_proportions <- function(
     condition_vars |>
     purrr::map(fn_one_cond) |>
     dplyr::bind_rows()
-  d$condition <- forcats::fct_inorder(d$condition) |> forcats::fct_rev()
+  d$condition <- forcats::fct_inorder(d$condition)
 
   if (flip) d$num_level <- d$num_level |> forcats::fct_rev()
 
@@ -386,9 +416,17 @@ plot_proportions <- function(
             .data$condition
           ) |>
           dplyr::summarise(num_level = dplyr::last(.data$num_level)),
-        by = "variable"
+        by = c("variable", "condition")
+      ) |>
+      dplyr::left_join(
+        d |>
+          dplyr::group_by(.data$condition) |>
+          dplyr::summarise(
+            y = ifelse(show_ci, max(.data$prop_high), max(.data$prop))
+          ),
+        by = "condition"
       )
-    pvalues$y <- ifelse(show_ci, max(d$prop_high), max(d$prop))
+    if (!free_scale) pvalues$y <- max(pvalues$y)
     pvalues$label <- pvalues_labeller(pvalues$p)
 
     plot <-
@@ -457,7 +495,10 @@ plot_proportions <- function(
   plot <-
     plot +
     ggplot2::labs(x = NULL, y = NULL) +
-    ggplot2::scale_y_continuous(labels = scales::percent) +
+    ggplot2::scale_y_continuous(
+      labels = scales::percent,
+      expand = ggplot2::expansion(mult = c(0, .1))
+    ) +
     ggplot2::scale_x_discrete(
       labels = \(x) {
         stringr::str_remove(x, "^[0-9]*_")
@@ -479,7 +520,7 @@ plot_proportions <- function(
       ggplot2::facet_grid(
         rows = ggplot2::vars(.data$variable_label),
         cols = cond_facet,
-        scales = "free_y",
+        scales = ifelse(free_scale, "free", "free_y"),
         space = "free_y",
         labeller = facet_labeller,
         switch = "y"
@@ -500,7 +541,7 @@ plot_proportions <- function(
       ggplot2::facet_grid(
         cols = ggplot2::vars(.data$variable_label),
         rows = cond_facet,
-        scales = "free_x",
+        scales = ifelse(free_scale, "free", "free_x"),
         space = "free_x",
         labeller = facet_labeller
       ) +
@@ -526,10 +567,6 @@ plot_proportions <- function(
 }
 
 #' @rdname plot_proportions
-#' @note
-#' `stratified_by()` is an helper facilitating a stratified analysis
-#' (see examples). Please note that only a simple condition could be passed to
-#' that function.
 #' @export
 #' @param strata Stratification variable
 #' @examples
@@ -557,5 +594,30 @@ stratified_by <- function(condition, strata) {
       )
     )
   names(res) <- levels(strata)
+  dplyr::as_tibble(res)
+}
+
+#' @rdname plot_proportions
+#' @param variable Variable to be converted into dummy variables.
+#' @export
+#' @examples
+#'
+#' # Convert Class into dummy variables
+#' titanic |>
+#'   plot_proportions(
+#'     dummy_proportions(Class),
+#'     by = Sex,
+#'     mapping = ggplot2::aes(fill = level)
+#'   )
+dummy_proportions <- function(variable) {
+  if (is.numeric(variable)) variable <- .convert_continuous(variable)
+  if (!is.factor(variable)) variable <- factor(variable)
+  res <-
+    variable |>
+    levels() |>
+    purrr::map(
+      ~ variable == .x
+    )
+  names(res) <- levels(variable)
   dplyr::as_tibble(res)
 }
