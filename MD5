@@ -1,6 +1,7 @@
-49b6121bde4a10c679287aa2c60e2d50 *DESCRIPTION
-e49a8827ebf25d786d803735a794abee *NAMESPACE
-06e410098f1150427f1010ea193a7a92 *NEWS.md
+3cb429653f92cdd53aa34dab983da7ea *DESCRIPTION
+5b73e72636ce5f810a0f67f12dd5f174 *NAMESPACE
+9ce3dbf7ce5d4effcd42ec0048ce2158 *NEWS.md
+ed322a3424492b85f252d3a4c2d45ee7 *R/combine_answers.R
 c0b211937a408731fee5429341e4db61 *R/cut_quartiles.R
 7f49ed27cfd33f6afb4f23966710ecc2 *R/grouped_tbl_pivot_wider.R
 189b38cda274262982ecd00e10633a8e *R/guideR-package.R
@@ -11,7 +12,8 @@ de85cad50d53389e150e76648d48af18 *R/long_to_periods.R
 2342ca39ba7d97aa34e86c8d7178981c *R/observed_vs_theoretical.R
 908f663c9af236d6376f3e2f24e160d7 *R/periods_to_long.R
 c9c8e2cc7d9de8b75eb5c43a5684632d *R/plot_inertia_from_tree.R
-bf39f23d64ab330003e2ac63b7219499 *R/plot_proportions.R
+190c145093fa6ea42fa4b3124759f826 *R/plot_multiple_answers.R
+3e483423b18447c4685c505af145f246 *R/plot_proportions.R
 cf74c73e3a4f9cb9239d564e26f74503 *R/proportion.R
 1387e86f0882dff3a241e321896f349b *R/round_preserve_sum.R
 b0d468106a263d429f10c388ea8ac8ff *R/step_with_na.R
@@ -19,6 +21,7 @@ c876636141e42dece26df68b052cb81b *R/titanic.R
 d9ba187a187c609840838c7192e0d2fa *R/unrowwise.R
 6ae4ddfffebb206014c2882098db7bcd *README.md
 b5e4e7b29971242a14aabcf196c06809 *inst/WORDLIST
+1bafb6b552b7f9ffc1ec5b8d9ef54979 *man/combine_answers.Rd
 a6c55331a6533a2f622cc75813dc568c *man/cut_quartiles.Rd
 391f696f961e28914508628a7af31b74 *man/figures/lifecycle-deprecated.svg
 691b1eb2aec9e1bec96b79d11ba5e631 *man/figures/lifecycle-experimental.svg
@@ -33,7 +36,8 @@ fafc28ac303182a413fdfedad854777c *man/long_to_periods.Rd
 7668312a9b1819519f2808fd3a711e6e *man/observed_vs_theoretical.Rd
 a6eaaad888916eed291a9e7a55fd3689 *man/periods_to_long.Rd
 74a1b897df63b1972f7a91587797d7e3 *man/plot_inertia_from_tree.Rd
-53375d4e74b7756e1b5df89ded6e2ec8 *man/plot_proportions.Rd
+a161e562c083118db5b475a89a024a27 *man/plot_multiple_answers.Rd
+abfcda79e4391245bf22419a845feb85 *man/plot_proportions.Rd
 628d07041f7d580dfa397a4abf2333b7 *man/proportion.Rd
 d41142fa7ad442df858e474dff038bca *man/round_preserve_sum.Rd
 5c6187039a0e43657f3a5f85e338f2ae *man/step_with_na.Rd
@@ -48,6 +52,7 @@ eea33ee18b71f8d7c2e7ca29f28cb6b0 *man/titanic.Rd
 736d2576beb3590e006a9a2bdc52fd9c *tests/testthat/test-observed_vs_theoretical.R
 b5f21cdbf9f00d24643876348ad2d17f *tests/testthat/test-periods_to_long.R
 5695f4caf4401ea2f0a8889aa2a58b2a *tests/testthat/test-plot_inertia_from_tree.R
+2f759c033e676ef7e6c66a9affdd4487 *tests/testthat/test-plot_multiple_answers.R
 456943efd834c18e0c373f5b7910dcb6 *tests/testthat/test-plot_proportions.R
 c881b1396829db4d24014aadbf4e9d12 *tests/testthat/test-proportion.R
 b87f80ad9c4d90e9e2c52d41baa3e171 *tests/testthat/test-round_preserve_sum.R
