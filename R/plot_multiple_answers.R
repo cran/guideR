@@ -51,7 +51,7 @@
 #' @param flip Flip x and y axis?
 #' @param return_data Return computed data instead of the plot?
 #' @export
-#' @keywords univar
+#' @keywords hplot
 #' @examples
 #' d <-
 #'   dplyr::tibble(
@@ -211,7 +211,7 @@ plot_multiple_answers <- function(
       ) |>
       dplyr::bind_rows() |>
       dplyr::filter(.data$.value == "TRUE") |>
-      dplyr::select(-.data$.value)
+      dplyr::select(-dplyr::all_of(".value"))
 
     # variable labels
     if (inherits(data, "survey.design")) {

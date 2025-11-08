@@ -47,7 +47,7 @@
 #' @param free_scale Allow y axis to vary between conditions?
 #' @param return_data Return computed data instead of the plot?
 #' @export
-#' @keywords univar
+#' @keywords hplot
 #' @examples
 #' titanic |>
 #'   plot_proportions(
@@ -230,8 +230,9 @@ plot_proportions <- function(
     dplyr::mutate(
       dplyr::across(
         dplyr::all_of(vars),
-        .convert_continuous,
-        convert_continuous
+        \(x) {
+          .convert_continuous(x, convert_continuous)
+        }
       )
     )
 
@@ -279,7 +280,7 @@ plot_proportions <- function(
         num_level = forcats::fct_inorder(.data$num_level),
         variable = forcats::fct_inorder(.data$variable)
       ) |>
-      dplyr::select(-.data[[cond_var]])
+      dplyr::select(-dplyr::all_of(cond_var))
   }
 
   d <-

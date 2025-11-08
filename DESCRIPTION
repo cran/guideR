@@ -1,7 +1,7 @@
 Package: guideR
 Type: Package
 Title: Miscellaneous Statistical Functions Used in 'guide-R'
-Version: 0.5.1
+Version: 0.6.0
 Authors@R: c(
     person(
       "Joseph", "Larmarange", ,
@@ -20,20 +20,20 @@ URL: https://larmarange.github.io/guideR/,
         https://github.com/larmarange/guideR
 BugReports: https://github.com/larmarange/guideR/issues
 Depends: R (>= 4.2)
-Imports: cli, dplyr, forcats, ggplot2, labelled, lifecycle, pak,
-        patchwork, purrr, renv, rlang, scales, srvyr, stats, stringr,
-        tidyr, tidyselect, utils
+Imports: cli, dplyr (>= 1.1.0), forcats, ggplot2, labelled, lifecycle,
+        pak, patchwork, purrr, renv, rlang, rstudioapi, scales, srvyr,
+        stats, stringr, tidyr, tidyselect, utils
 Encoding: UTF-8
 RoxygenNote: 7.3.3
-Suggests: broom.helpers, cardx, FactoMineR, ggupset, ggstats, gt,
-        gtsummary, nnet, parameters, spelling, survey, survival,
-        testthat (>= 3.0.0)
+Suggests: broom.helpers, cardx, DT, FactoMineR, ggupset, ggstats, gt,
+        gtsummary (>= 2.3.0), htmltools, htmlwidgets, nnet, parameters,
+        spelling, survey, survival, testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Language: en-US
 NeedsCompilation: no
-Packaged: 2025-10-20 14:41:13 UTC; josep
+Packaged: 2025-11-08 19:31:42 UTC; josep
 Author: Joseph Larmarange [aut, cre] (ORCID:
     <https://orcid.org/0000-0001-7097-700X>)
 Maintainer: Joseph Larmarange <joseph@larmarange.net>
 Repository: CRAN
-Date/Publication: 2025-10-21 09:10:45 UTC
+Date/Publication: 2025-11-08 19:50:02 UTC
