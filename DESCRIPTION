@@ -1,7 +1,7 @@
 Package: guideR
 Type: Package
 Title: Miscellaneous Statistical Functions Used in 'guide-R'
-Version: 0.6.0
+Version: 0.7.0
 Authors@R: c(
     person(
       "Joseph", "Larmarange", ,
@@ -25,15 +25,16 @@ Imports: cli, dplyr (>= 1.1.0), forcats, ggplot2, labelled, lifecycle,
         stats, stringr, tidyr, tidyselect, utils
 Encoding: UTF-8
 RoxygenNote: 7.3.3
-Suggests: broom.helpers, cardx, DT, FactoMineR, ggupset, ggstats, gt,
-        gtsummary (>= 2.3.0), htmltools, htmlwidgets, nnet, parameters,
-        spelling, survey, survival, testthat (>= 3.0.0)
+Suggests: broom, broom.helpers, cardx, DT, FactoMineR, ggupset,
+        ggstats, gt, gtsummary (>= 2.3.0), htmltools, htmlwidgets,
+        nnet, parameters, spelling, survey, survival, testthat (>=
+        3.0.0)
 Config/testthat/edition: 3
 Language: en-US
 NeedsCompilation: no
-Packaged: 2025-11-08 19:31:42 UTC; josep
+Packaged: 2025-11-26 12:13:04 UTC; josep
 Author: Joseph Larmarange [aut, cre] (ORCID:
     <https://orcid.org/0000-0001-7097-700X>)
 Maintainer: Joseph Larmarange <joseph@larmarange.net>
 Repository: CRAN
-Date/Publication: 2025-11-08 19:50:02 UTC
+Date/Publication: 2025-11-26 12:30:02 UTC
