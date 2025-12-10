@@ -1,22 +1,29 @@
-test_that("plot_proportions() does not produce an error", {
+test_that("plot_proportions() works", {
   expect_no_error(
-    titanic |>
+    p <-
+      titanic |>
       plot_proportions(
         Survived == "Yes",
         overall_label = "All",
         labels_color = "white"
       )
   )
+  expect_doppelganger("plot_proportions() overall only", p)
+
   expect_no_error(
-    titanic |>
+    p <-
+      titanic |>
       plot_proportions(
         Survived == "Yes",
         by = c(Class, Sex),
         fill = "lightblue"
       )
   )
+  expect_doppelganger("plot_proportions() by", p)
+
   expect_no_error(
-    titanic |>
+    p <-
+      titanic |>
       plot_proportions(
         Survived == "Yes",
         by = c(Class, Sex),
@@ -25,9 +32,24 @@ test_that("plot_proportions() does not produce an error", {
         pvalues_test = "chisq"
       )
   )
+  expect_doppelganger("plot_proportions() by and flip", p)
+
+  expect_no_error(
+    p <-
+      titanic |>
+      plot_proportions(
+        Survived == "Yes",
+        by = c(Class, Sex),
+        fill = "lightblue",
+        minimal = TRUE
+      )
+  )
+  expect_doppelganger("plot_proportions() minimal", p)
+
   skip_on_cran()
   expect_no_error(
-    titanic |>
+    p <-
+      titanic |>
       plot_proportions(
         Survived == "Yes",
         by = c(Class, Sex),
@@ -37,8 +59,11 @@ test_that("plot_proportions() does not produce an error", {
         show_labels = FALSE
       )
   )
+  expect_doppelganger("plot_proportions() points", p)
+
   expect_no_error(
-    titanic |>
+    p <-
+      titanic |>
       srvyr::as_survey() |>
       plot_proportions(
         Survived == "Yes",
@@ -48,22 +73,30 @@ test_that("plot_proportions() does not produce an error", {
         show_overall_line = TRUE
       )
   )
+  expect_doppelganger("plot_proportions() survey", p)
+
   d <- titanic
   d$Sex[1:50] <- NA
   expect_no_error(
-    d |> plot_proportions(Survived == "Yes", by = Sex)
+    p <- d |> plot_proportions(Survived == "Yes", by = Sex)
   )
-  expect_no_error(
-    d |> plot_proportions(Survived == "Yes", by = Sex, drop_na_by = TRUE)
-  )
+  expect_doppelganger("plot_proportions() missing by", p)
 
   expect_no_error(
-    iris |>
+    p <- d |> plot_proportions(Survived == "Yes", by = Sex, drop_na_by = TRUE)
+  )
+  expect_doppelganger("plot_propotions() missing by and drop_na_by", p)
+
+  expect_no_error(
+    p <-
+      iris |>
       plot_proportions(Species == "versicolor", by = dplyr::contains("leng"))
   )
+  expect_doppelganger("plot_proportions() tidyselect by", p)
 
   expect_no_error(
-    iris |>
+    p <-
+      iris |>
       plot_proportions(
         dplyr::tibble(
           "Long sepal" = Sepal.Length > 6,
@@ -72,26 +105,32 @@ test_that("plot_proportions() does not produce an error", {
         by = Species
       )
   )
+  expect_doppelganger("plot_proportions() multiple conditions", p)
 
   expect_no_error(
-    titanic |>
+    p <-
+      titanic |>
       plot_proportions(
         (Survived == "Yes") |>  stratified_by(Sex),
         by = Class
       )
   )
+  expect_doppelganger("plot_proportions() stratified_by", p)
 
   expect_no_error(
-    titanic |>
+    p <-
+      titanic |>
       plot_proportions(
         dummy_proportions(Class),
         by = Sex,
         mapping = ggplot2::aes(fill = level)
       )
   )
+  expect_doppelganger("plot_proportions() dummy_proportions", p)
 
   expect_no_error(
-    titanic |>
+    p <-
+      titanic |>
       plot_proportions(
         dplyr::tibble(
           Survived = Survived == "Yes",
@@ -102,4 +141,5 @@ test_that("plot_proportions() does not produce an error", {
         free_scale = TRUE
       )
   )
+  expect_doppelganger("plot_proportions fill=condition", p)
 })

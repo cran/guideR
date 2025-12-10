@@ -1,10 +1,12 @@
-test_that("observed_vs_theoretical() does not produce an error", {
+test_that("observed_vs_theoretical() works", {
+  set.seed(2025)
   mod <- glm(
     as.factor(Survived) ~ Class + Sex,
     data = titanic,
     family = binomial()
   )
   expect_no_error(
-    mod |> observed_vs_theoretical()
+    p <- mod |> observed_vs_theoretical()
   )
+  expect_doppelganger("observed_vs_theoretical()", p)
 })

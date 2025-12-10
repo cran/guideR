@@ -18,8 +18,8 @@
 #' @param by <[`tidy-select`][dplyr::dplyr_tidy_select ]> List of variables to
 #' group by (comparison is done separately for each variable).
 #' @param drop_na_by Remove `NA` values in `by` variables?
-#' @param convert_continuous Should continuous variables (with 5 unique values
-#' or more) be converted to quartiles (using `cut_quartiles()`)?
+#' @param convert_continuous Should continuous by variables (with 5 unique
+#' values or more) be converted to quartiles (using `cut_quartiles()`)?
 #' @param geom Geometry to use for plotting proportions (`"bar"` by default).
 #' @param ... Additional arguments passed to the geom defined by `geom`.
 #' @param show_overall Display "Overall" column?
@@ -35,15 +35,17 @@
 #' @param pvalues_labeller Labeller function for p-values.
 #' @param pvalues_size Text size for p-values.
 #' @param show_labels Display proportion labels?
-#' @param labels_labeller Labeller function for proportion labels.
-#' @param labels_size Size of proportion labels.
-#' @param labels_color Color of proportion labels.
+#' @param label_y Y position of labels. If `NULL`, will be auto-determined.
+#' @param labels_labeller Labeller function for labels.
+#' @param labels_size Size of labels.
+#' @param labels_color Color of labels.
 #' @param show_overall_line Add an overall line?
 #' @param overall_line_type Line type of the overall line.
 #' @param overall_line_color Color of the overall line.
 #' @param overall_line_width Line width of the overall line.
 #' @param facet_labeller Labeller function for strip labels.
 #' @param flip Flip x and y axis?
+#' @param minimal Should a minimal theme be applied? (no y-axis, no grid)
 #' @param free_scale Allow y axis to vary between conditions?
 #' @param return_data Return computed data instead of the plot?
 #' @export
@@ -71,6 +73,14 @@
 #'     by = c(Class, Sex),
 #'     fill = "lightblue",
 #'     flip = TRUE
+#'   )
+#'
+#' titanic |>
+#'   plot_proportions(
+#'     Survived == "Yes",
+#'     by = c(Class, Sex),
+#'     fill = "lightblue",
+#'     minimal = TRUE
 #'   )
 #'
 #' titanic |>
@@ -106,7 +116,7 @@
 #'   plot_proportions(
 #'     Survived == "Yes",
 #'     by = -Survived,
-#'     mapping = ggplot2::aes(fill = variable),
+#'     mapping = ggplot2::aes(fill = by),
 #'     color = "black",
 #'     show.legend = FALSE,
 #'     show_overall_line = TRUE,
@@ -199,6 +209,7 @@ plot_proportions <- function(
   pvalues_labeller = scales::label_pvalue(add_p = TRUE),
   pvalues_size = 3.5,
   show_labels = TRUE,
+  label_y = NULL,
   labels_labeller = scales::label_percent(1),
   labels_size = 3.5,
   labels_color = "black",
@@ -208,36 +219,23 @@ plot_proportions <- function(
   overall_line_width = .5,
   facet_labeller = ggplot2::label_wrap_gen(width = 50, multi_line = TRUE),
   flip = FALSE,
+  minimal = FALSE,
   free_scale = FALSE,
   return_data = FALSE
 ) {
   # variable identification
-  vars <- data |> dplyr::select({{ by }}) |> colnames()
+  by_variables <- data |> dplyr::select({{ by }}) |> colnames()
 
-  if (show_overall || length(vars) == 0) {
-    data <- data |> dplyr::mutate(.overall = overall_label)
-    if (inherits(data, "survey.design")) {
-      labelled::var_label(data$variables$.overall) <- overall_label
-    } else {
-      labelled::var_label(data$.overall) <- overall_label
-    }
-    vars <- c(".overall", vars)
+  if (show_overall || length(by_variables) == 0) {
+    data <- data |> .add_overall(overall_label)
+    by_variables <- c(".overall", by_variables)
   }
 
   # conversion of numeric by variables
-  data <-
-    data |>
-    dplyr::mutate(
-      dplyr::across(
-        dplyr::all_of(vars),
-        \(x) {
-          .convert_continuous(x, convert_continuous)
-        }
-      )
-    )
+  data <- data |> .convert_numeric_by(by_variables, convert_continuous)
 
   # computation of conditions
-  condition_vars <- data |>
+  condition_variables <- data |>
     dplyr::mutate({{ condition }}, .keep = "none") |>
     colnames()
   data <-
@@ -245,7 +243,7 @@ plot_proportions <- function(
     dplyr::mutate({{ condition }}) |>
     dplyr::mutate(
       dplyr::across(
-        dplyr::all_of(condition_vars),
+        dplyr::all_of(condition_variables),
         \(x) {
           factor(x, levels = c(FALSE, TRUE))
         }
@@ -254,7 +252,7 @@ plot_proportions <- function(
 
   # proportion computation
   fn_one_cond <- function(cond_var) {
-    vars |>
+    by_variables |>
       purrr::map(
         ~ data |>
           dplyr::mutate(level = .data[[.x]]) |>
@@ -268,7 +266,7 @@ plot_proportions <- function(
             .drop_na_by = drop_na_by
           ) |>
           dplyr::mutate(
-            variable = .x,
+            by = .x,
             condition = cond_var
           )
       ) |>
@@ -278,13 +276,13 @@ plot_proportions <- function(
       dplyr::mutate(
         num_level = paste(dplyr::row_number(), .data$level, sep = "_"),
         num_level = forcats::fct_inorder(.data$num_level),
-        variable = forcats::fct_inorder(.data$variable)
+        by = forcats::fct_inorder(.data$by)
       ) |>
       dplyr::select(-dplyr::all_of(cond_var))
   }
 
   d <-
-    condition_vars |>
+    condition_variables |>
     purrr::map(fn_one_cond) |>
     dplyr::bind_rows()
   d$condition <- forcats::fct_inorder(d$condition)
@@ -292,27 +290,23 @@ plot_proportions <- function(
   if (flip) d$num_level <- d$num_level |> forcats::fct_rev()
 
   # variable labels
-  if (inherits(data, "survey.design")) {
-    vl <- labelled::var_label(
-      data$variables[, vars],
-      null_action = "fill",
-      unlist = TRUE
-    )
-  } else {
-    vl <- labelled::var_label(
-      data[, vars, drop = FALSE],
-      null_action = "fill",
-      unlist = TRUE
-    )
-  }
-  d$variable_label <- vl[d$variable] |> forcats::fct_inorder()
+  vl <- data |> .get_vl(by_variables)
+  d$by_label <- vl[d$by] |> forcats::fct_inorder()
   d <-
     d |>
-    dplyr::relocate(dplyr::all_of(c("variable", "variable_label")))
+    dplyr::relocate(dplyr::all_of(c("by", "by_label")))
 
   # proportion labels
   d$prop_label <- labels_labeller(d$prop)
-  d$y_label <- 0
+  if (!is.null(label_y)) {
+    d$y_label <- label_y
+  } else if (geom %in% c("bar", "area")) {
+    d$y_label <- 0.01
+  } else if (show_ci) {
+    d$y_label <- min(d$prop_low) - .1 * diff(range(d$prop_low, d$prop_high))
+  } else {
+    d$y_label <- min(d$prop) - .1 * diff(range(d$prop))
+  }
 
   # computing p-values
   pvalues <- NULL
@@ -338,28 +332,28 @@ plot_proportions <- function(
       v2 <- # selecting only variables with at least 2 levels
         d |>
         dplyr::filter(condition == cond_var) |>
-        dplyr::count(.data$variable, name = "n") |>
+        dplyr::count(.data$by, name = "n") |>
         dplyr::filter(.data$n >= 2) |>
-        dplyr::pull("variable") |>
+        dplyr::pull("by") |>
         as.character()
 
       res <- v2 |>
         purrr::map(
           ~ paste0("~ `", cond_var, "` + ", .x) |>
-            as.formula() |>
+            stats::as.formula() |>
             test_fun(data) |>
             purrr::pluck("p.value")
         )
       res <- unlist(res)
       res <- dplyr::tibble(
-        variable = v2,
+        by = v2,
         condition = cond_var,
         p = res
       )
     }
 
     pvalues <-
-      condition_vars |>
+      condition_variables |>
       purrr::map(p_one_cond) |>
       dplyr::bind_rows()
   }
@@ -368,107 +362,15 @@ plot_proportions <- function(
     if (!is.null(pvalues))
       d <-
         d |>
-        dplyr::left_join(pvalues, by = c("variable", "condition"))
+        dplyr::left_join(pvalues, by = c("by", "condition"))
     return(d)
   }
 
-  # main plot
-  plot <- d |>
-    ggplot2::ggplot() +
-    ggplot2::aes(
-      x = .data$num_level,
-      y = .data$prop,
-      group = 1
-    )
-  if (geom != "point") # if point, should be drawn after ci
-    plot <-
-      plot +
-      ggplot2::stat_identity(geom = geom, ...)
-
-  # plotting confidence intervals
-  if (show_ci) {
-    plot <-
-      plot +
-      ggplot2::geom_errorbar(
-        mapping = ggplot2::aes(
-          ymin = .data$prop_low,
-          ymax = .data$prop_high
-        ),
-        width = .1,
-        color = ci_color
-      )
-  }
-
-  if (geom == "point")
-    plot <-
-      plot +
-      ggplot2::stat_identity(geom = geom, ...)
-
-  # plotting p-values
-  if (show_pvalues && !is.null(pvalues) && nrow(pvalues) > 0) {
-    pvalues <-
-      pvalues |>
-      dplyr::left_join(
-        d |>
-          dplyr::arrange(.data$num_level) |>
-          dplyr::group_by(
-            .data$variable,
-            .data$variable_label,
-            .data$condition
-          ) |>
-          dplyr::summarise(num_level = dplyr::last(.data$num_level)),
-        by = c("variable", "condition")
-      ) |>
-      dplyr::left_join(
-        d |>
-          dplyr::group_by(.data$condition) |>
-          dplyr::summarise(
-            y = ifelse(show_ci, max(.data$prop_high), max(.data$prop))
-          ),
-        by = "condition"
-      )
-    if (!free_scale) pvalues$y <- max(pvalues$y)
-    pvalues$label <- pvalues_labeller(pvalues$p)
-
-    plot <-
-      plot +
-      ggplot2::geom_text(
-        data = pvalues,
-        mapping = ggplot2::aes(
-          y = .data$y,
-          label = .data$label,
-          ymin = NULL,
-          ymax = NULL
-        ),
-        nudge_y = .01,
-        nudge_x = 0.5,
-        vjust = ifelse(flip, 1, 0),
-        hjust = 1,
-        size = pvalues_size
-      )
-  }
-
-  # plotting proportion labels
-  if (show_labels) {
-    plot <-
-      plot +
-      ggplot2::geom_text(
-        mapping = ggplot2::aes(
-          label = .data$prop_label,
-          y = .data$y_label
-        ),
-        size = labels_size,
-        color = labels_color,
-        vjust = ifelse(flip, .5, 0),
-        hjust = ifelse(flip, 0, 0.5),
-        nudge_y = .01
-      )
-  }
-
-  # overall line
+  # computing overall line
+  yintercepts <- NULL
   if (show_overall_line) {
     yintercepts <-
-      condition_vars |>
+      condition_variables |>
       purrr::map(
         ~ data |>
           proportion(.data[[.x]], .scale = 1, .na.rm = TRUE) |>
@@ -477,82 +379,55 @@ plot_proportions <- function(
       ) |>
       unlist()
     yintercepts <- dplyr::tibble(
-      condition = condition_vars,
+      condition = condition_variables,
       yintercept = yintercepts
     )
-
-    plot <-
-      plot +
-      ggplot2::geom_hline(
-        data = yintercepts,
-        mapping = ggplot2::aes(yintercept = .data$yintercept),
-        color = overall_line_color,
-        linetype = overall_line_type,
-        linewidth = overall_line_width
-      )
   }
 
-  # facet and theme
-  plot <-
-    plot +
-    ggplot2::labs(x = NULL, y = NULL) +
+  # facets per condition
+  if (length(condition_variables) > 1) {
+    cols_facet <- ggplot2::vars(.data$condition)
+  } else {
+    cols_facet <- NULL
+  }
+
+  # plot
+  .guideR_generic_plot_by(
+    d,
+    y = "prop",
+    outcome = "condition",
+    geom = geom,
+    position = "identity",
+    ...,
+    show_ci = show_ci,
+    ci_ymin = "prop_low",
+    ci_ymax = "prop_high",
+    ci_color = ci_color,
+    show_pvalues = show_pvalues,
+    pvalues = pvalues,
+    pvalues_labeller = pvalues_labeller,
+    pvalues_size = pvalues_size,
+    show_labels = show_labels,
+    label = "prop_label",
+    y_label = "y_label",
+    label_position = "nudge",
+    labels_size = labels_size,
+    labels_color = labels_color,
+    show_overall_line = show_overall_line,
+    yintercepts = yintercepts,
+    overall_line_type = overall_line_type,
+    overall_line_color = overall_line_color,
+    overall_line_width = overall_line_width,
+    facet_labeller = facet_labeller,
+    flip = flip,
+    minimal = minimal,
+    free_scale = free_scale,
+    cols_facet = cols_facet
+  ) +
     ggplot2::scale_y_continuous(
       labels = scales::percent,
       expand = ggplot2::expansion(mult = c(0, .1))
-    ) +
-    ggplot2::scale_x_discrete(
-      labels = \(x) {
-        stringr::str_remove(x, "^[0-9]*_")
-      }
-    ) +
-    ggplot2::theme_light() +
-    ggplot2::theme(strip.background = ggplot2::element_rect(fill = "grey50"))
-
-  if (length(condition_vars) > 1) {
-    cond_facet <- ggplot2::vars(.data$condition)
-  } else {
-    cond_facet <- NULL
-  }
-
-  if (flip) {
-    plot <-
-      plot +
-      ggplot2::coord_flip() +
-      ggplot2::facet_grid(
-        rows = ggplot2::vars(.data$variable_label),
-        cols = cond_facet,
-        scales = ifelse(free_scale, "free", "free_y"),
-        space = "free_y",
-        labeller = facet_labeller,
-        switch = "y"
-      ) +
-      ggplot2::theme(
-        panel.grid.major.y = ggplot2::element_blank(),
-        axis.ticks.y = ggplot2::element_blank(),
-        strip.placement = "outside",
-        strip.text.y.left = ggplot2::element_text(
-          face = "bold", angle = 0, color = "black",
-          hjust = 0, vjust = 1
-        ),
-        strip.background.y = ggplot2::element_blank()
-      )
-  } else {
-    plot <-
-      plot +
-      ggplot2::facet_grid(
-        cols = ggplot2::vars(.data$variable_label),
-        rows = cond_facet,
-        scales = ifelse(free_scale, "free", "free_x"),
-        space = "free_x",
-        labeller = facet_labeller
-      ) +
-      ggplot2::theme(
-        panel.grid.major.x = ggplot2::element_blank(),
-        axis.ticks.x = ggplot2::element_blank()
-      )
-  }
-
-  plot
+    )
 }
 
 .convert_continuous <- function(x, convert_continuous) {
@@ -621,4 +496,297 @@ dummy_proportions <- function(variable) {
     )
   names(res) <- levels(variable)
   dplyr::as_tibble(res)
+}
+
+.add_overall <- function(data, overall_label) {
+  data <- data |> dplyr::mutate(.overall = overall_label)
+  if (inherits(data, "survey.design")) {
+    labelled::var_label(data$variables$.overall) <- overall_label
+  } else {
+    labelled::var_label(data$.overall) <- overall_label
+  }
+  data
+}
+
+.convert_numeric_by <- function(data, by_variables, convert_continuous) {
+  data |>
+    dplyr::mutate(
+      dplyr::across(
+        dplyr::all_of(by_variables),
+        \(x) {
+          .convert_continuous(x, convert_continuous)
+        }
+      )
+    )
+}
+
+.get_vl <- function(data, variables) {
+  if (inherits(data, "survey.design")) {
+    vl <- labelled::var_label(
+      data$variables[, variables],
+      null_action = "fill",
+      unlist = TRUE
+    )
+  } else {
+    vl <- labelled::var_label(
+      data[, variables, drop = FALSE],
+      null_action = "fill",
+      unlist = TRUE
+    )
+  }
+  vl
+}
+
+.guideR_generic_plot_by <- function(
+  d,
+  y = "prop",
+  outcome = "condition",
+  geom = "bar",
+  position = "identity",
+  ...,
+  show_ci = TRUE,
+  ci_ymin = "prop_low",
+  ci_ymax = "prop_high",
+  ci_color = "black",
+  show_pvalues = TRUE,
+  pvalues = NULL,
+  pvalues_labeller = scales::label_pvalue(add_p = TRUE),
+  pvalues_size = 3.5,
+  pvalues_y = NULL, # to manually pass position of p-values
+  show_labels = TRUE,
+  label = "prop_label",
+  y_label = "y_label",
+  label_position = "nudge",
+  labels_size = 3.5,
+  labels_color = "black",
+  show_overall_line = FALSE,
+  yintercepts = NULL,
+  overall_line_type = "dashed",
+  overall_line_color = "black",
+  overall_line_width = .5,
+  facet_labeller = ggplot2::label_wrap_gen(width = 50, multi_line = TRUE),
+  flip = FALSE,
+  minimal = FALSE,
+  free_scale = FALSE,
+  cols_facet = NULL
+) {
+  # main plot
+  plot <- d |>
+    ggplot2::ggplot() +
+    ggplot2::aes(
+      x = .data$num_level,
+      y = .data[[y]],
+      group = 1
+    )
+  if (geom != "point" && geom != "boxplot") # if point, should be drawn after ci
+    plot <-
+      plot +
+      ggplot2::stat_identity(geom = geom, ..., position = position)
+
+  # specific case for boxplot
+  if (geom == "boxplot")
+    plot <-
+      plot +
+      ggplot2::geom_boxplot(stat = "identity", ..., position = position)
+
+  # plotting confidence intervals
+  if (show_ci) {
+    plot <-
+      plot +
+      ggplot2::geom_errorbar(
+        mapping = ggplot2::aes(
+          ymin = .data[[ci_ymin]],
+          ymax = .data[[ci_ymax]]
+        ),
+        width = .1,
+        color = ci_color,
+        position = position
+      )
+  }
+
+  if (geom == "point")
+    plot <-
+      plot +
+      ggplot2::stat_identity(geom = geom, ..., position = position)
+
+  # plotting p-values
+  if (show_pvalues && !is.null(pvalues) && nrow(pvalues) > 0) {
+    pvalues <-
+      pvalues |>
+      dplyr::left_join(
+        d |>
+          dplyr::arrange(.data$num_level) |>
+          dplyr::group_by(
+            .data$by,
+            .data$by_label,
+            .data[[outcome]]
+          ) |>
+          dplyr::summarise(num_level = dplyr::last(.data$num_level)),
+        by = c("by", outcome)
+      ) |>
+      dplyr::left_join(
+        d |>
+          dplyr::group_by(.data[[outcome]]) |>
+          dplyr::summarise(
+            y = ifelse(
+              is.null(pvalues_y),
+              ifelse(show_ci, max(.data[[ci_ymax]]), max(.data[[y]])),
+              pvalues_y
+            )
+          ),
+        by = outcome
+      )
+    if (!free_scale) pvalues$y <- max(pvalues$y)
+    pvalues$label <- pvalues_labeller(pvalues$p)
+
+    plot <-
+      plot +
+      ggplot2::geom_text(
+        data = pvalues,
+        mapping = ggplot2::aes(
+          x = .data$num_level,
+          y = .data$y,
+          label = .data$label,
+        ),
+        inherit.aes = FALSE,
+        nudge_y = .01,
+        nudge_x = 0.5,
+        vjust = ifelse(flip, 1, 0),
+        hjust = 1,
+        size = pvalues_size
+      )
+  }
+
+  # plotting labels
+  if (show_labels) {
+    if (is.null(y_label)) { # categorical case
+      m <- ggplot2::aes(label = .data[[label]])
+      vj <- .5
+      hj <- .5
+    } else {
+      m <- ggplot2::aes(label = .data[[label]], y = .data[[y_label]])
+      vj <- ifelse(flip, .5, 0)
+      hj <- ifelse(flip, 0, .5)
+    }
+
+    if (labels_color == "auto") {
+      rlang::check_installed("ggstats")
+      m$colour <- ggstats::auto_contrast$colour
+      plot <-
+        plot +
+        ggplot2::geom_text(
+          mapping = m,
+          size = labels_size,
+          vjust = vj,
+          hjust = hj,
+          position = label_position
+        )
+    } else {
+      plot <-
+        plot +
+        ggplot2::geom_text(
+          mapping = m,
+          size = labels_size,
+          color = labels_color,
+          vjust = vj,
+          hjust = hj,
+          position = label_position
+        )
+    }
+  }
+
+  # overall line
+  if (show_overall_line) {
+    plot <-
+      plot +
+      ggplot2::geom_hline(
+        data = yintercepts,
+        mapping = ggplot2::aes(yintercept = .data$yintercept),
+        color = overall_line_color,
+        linetype = overall_line_type,
+        linewidth = overall_line_width
+      )
+  }
+
+  # facet and theme
+  plot <-
+    plot +
+    ggplot2::labs(x = NULL, y = NULL) +
+    ggplot2::scale_x_discrete(
+      labels = \(x) {
+        stringr::str_remove(x, "^[0-9]*_")
+      }
+    ) +
+    ggplot2::theme_light() +
+    ggplot2::theme(strip.background = ggplot2::element_rect(fill = "grey50"))
+
+  if (flip) {
+    plot <-
+      plot +
+      ggplot2::coord_flip() +
+      ggplot2::facet_grid(
+        rows = ggplot2::vars(.data$by_label),
+        cols = cols_facet,
+        scales = ifelse(free_scale, "free", "free_y"),
+        space = "free_y",
+        labeller = facet_labeller,
+        switch = "y"
+      ) +
+      ggplot2::theme(
+        panel.grid.major.y = ggplot2::element_blank(),
+        axis.ticks.y = ggplot2::element_blank(),
+        strip.placement = "outside",
+        strip.text.y.left = ggplot2::element_text(
+          face = "bold", angle = 0, color = "black",
+          hjust = 0, vjust = 1
+        ),
+        strip.background.y = ggplot2::element_blank()
+      )
+  } else {
+    plot <-
+      plot +
+      ggplot2::facet_grid(
+        cols = ggplot2::vars(.data$by_label),
+        rows = cols_facet,
+        scales = ifelse(free_scale, "free", "free_x"),
+        space = "free_x",
+        labeller = facet_labeller
+      ) +
+      ggplot2::theme(
+        panel.grid.major.x = ggplot2::element_blank(),
+        axis.ticks.x = ggplot2::element_blank()
+      )
+  }
+
+  if (minimal) {
+    plot <-
+      plot +
+      ggplot2::theme(
+        panel.grid = ggplot2::element_blank(),
+        panel.border = ggplot2::element_blank(),
+        axis.ticks = ggplot2::element_blank(),
+        panel.background = ggplot2::element_rect(fill = "grey97")
+      )
+
+    if (flip) {
+      plot <-
+        plot +
+        ggplot2::theme(
+          axis.text.x = ggplot2::element_blank()
+        )
+    } else {
+      plot <-
+        plot +
+        ggplot2::theme(
+          axis.text.y = ggplot2::element_blank(),
+          strip.text.x.top = ggplot2::element_text(
+            face = "bold", angle = 0, color = "black",
+            hjust = 0.5, vjust = 1
+          ),
+          strip.background.x = ggplot2::element_blank()
+        )
+    }
+  }
+
+  plot
 }

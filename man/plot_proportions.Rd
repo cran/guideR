@@ -24,6 +24,7 @@ plot_proportions(
   pvalues_labeller = scales::label_pvalue(add_p = TRUE),
   pvalues_size = 3.5,
   show_labels = TRUE,
+  label_y = NULL,
   labels_labeller = scales::label_percent(1),
   labels_size = 3.5,
   labels_color = "black",
@@ -33,6 +34,7 @@ plot_proportions(
   overall_line_width = 0.5,
   facet_labeller = ggplot2::label_wrap_gen(width = 50, multi_line = TRUE),
   flip = FALSE,
+  minimal = FALSE,
   free_scale = FALSE,
   return_data = FALSE
 )
@@ -54,8 +56,8 @@ group by (comparison is done separately for each variable).}
 
 \item{drop_na_by}{Remove \code{NA} values in \code{by} variables?}
 
-\item{convert_continuous}{Should continuous variables (with 5 unique values
-or more) be converted to quartiles (using \code{cut_quartiles()})?}
+\item{convert_continuous}{Should continuous by variables (with 5 unique
+values or more) be converted to quartiles (using \code{cut_quartiles()})?}
 
 \item{geom}{Geometry to use for plotting proportions (\code{"bar"} by default).}
 
@@ -84,11 +86,13 @@ or more) be converted to quartiles (using \code{cut_quartiles()})?}
 
 \item{show_labels}{Display proportion labels?}
 
-\item{labels_labeller}{Labeller function for proportion labels.}
+\item{label_y}{Y position of labels. If \code{NULL}, will be auto-determined.}
 
-\item{labels_size}{Size of proportion labels.}
+\item{labels_labeller}{Labeller function for labels.}
 
-\item{labels_color}{Color of proportion labels.}
+\item{labels_size}{Size of labels.}
+
+\item{labels_color}{Color of labels.}
 
 \item{show_overall_line}{Add an overall line?}
 
@@ -101,6 +105,8 @@ or more) be converted to quartiles (using \code{cut_quartiles()})?}
 \item{facet_labeller}{Labeller function for strip labels.}
 
 \item{flip}{Flip x and y axis?}
+
+\item{minimal}{Should a minimal theme be applied? (no y-axis, no grid)}
 
 \item{free_scale}{Allow y axis to vary between conditions?}
 
@@ -150,6 +156,14 @@ titanic |>
   plot_proportions(
     Survived == "Yes",
     by = c(Class, Sex),
+    fill = "lightblue",
+    minimal = TRUE
+  )
+
+titanic |>
+  plot_proportions(
+    Survived == "Yes",
+    by = c(Class, Sex),
     geom = "point",
     color = "red",
     size = 3,
@@ -179,7 +193,7 @@ titanic |>
   plot_proportions(
     Survived == "Yes",
     by = -Survived,
-    mapping = ggplot2::aes(fill = variable),
+    mapping = ggplot2::aes(fill = by),
     color = "black",
     show.legend = FALSE,
     show_overall_line = TRUE,
