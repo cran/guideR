@@ -1,11 +1,11 @@
-63e9e1a35dead2dc1f78f439415e3c8f *DESCRIPTION
+2c66dea3155ff9cce60c41e76221f737 *DESCRIPTION
 62d0ca3aecc6175aec47c2576fdba646 *NAMESPACE
-96648ab312b3e610510431544cb7bdf5 *NEWS.md
-ed322a3424492b85f252d3a4c2d45ee7 *R/combine_answers.R
+a04a975b7657ad00698c3cf1c672edd0 *NEWS.md
+e4b2fbd682175289c902eb627a339ca6 *R/combine_answers.R
 c0b211937a408731fee5429341e4db61 *R/cut_quartiles.R
 e1235bbe4dab16250dc6c08091491cf3 *R/grouped_tbl_pivot_wider.R
 53301a2e824b8568000ce846778ed33b *R/gtsummary_tests.R
-b22b556e1e55ecb2681a168de30ea42e *R/gtsummary_themes.R
+0a5ad67216f3b4c9685ed39b50b8a0b9 *R/gtsummary_themes.R
 54a9981f1316dc08a85045f8a8066268 *R/gtsummary_utilities.R
 189b38cda274262982ecd00e10633a8e *R/guideR-package.R
 80e933078bcefbfb4ca59c820c7e5771 *R/install_dependencies.R
@@ -20,9 +20,9 @@ f93eb14c47c519092dc599d543537262 *R/plot_categorical.R
 69c63cda34f661c9c7042e07c2394be9 *R/plot_continuous.R
 c9c8e2cc7d9de8b75eb5c43a5684632d *R/plot_inertia_from_tree.R
 71a0d85c831ea2b185521af1409783c8 *R/plot_means.R
-abf0381404086d7905c88282ba651c2a *R/plot_multiple_answers.R
+a4b298ee1daec9fed3325b3dacd9ac4a *R/plot_multiple_answers.R
 ee926e9267d5d8dd600c0d9c5df7b715 *R/plot_proportions.R
-4e1b391b9bc388a6d6d4a467b5a90505 *R/plot_trajectories.R
+af066c09fa90e9ad3c219373e0343c82 *R/plot_trajectories.R
 70254b10cbff781a96045a0a536c9a2f *R/proportion.R
 1387e86f0882dff3a241e321896f349b *R/round_preserve_sum.R
 86e624fbc78df06055d4e65db0486648 *R/safe_pal.R
@@ -35,7 +35,7 @@ d9ba187a187c609840838c7192e0d2fa *R/unrowwise.R
 d4b42cd7998e540b0df4742749ed5857 *README.md
 f8d7347009c9a602f8788986189e49ca *inst/WORDLIST
 7936fb59e561dc76b064e4c2ce2286d3 *inst/rstudio/addins.dcf
-1bafb6b552b7f9ffc1ec5b8d9ef54979 *man/combine_answers.Rd
+12e6b209609fafff6181f75a27f20b57 *man/combine_answers.Rd
 a6c55331a6533a2f622cc75813dc568c *man/cut_quartiles.Rd
 391f696f961e28914508628a7af31b74 *man/figures/lifecycle-deprecated.svg
 691b1eb2aec9e1bec96b79d11ba5e631 *man/figures/lifecycle-experimental.svg
@@ -85,7 +85,7 @@ b5f21cdbf9f00d24643876348ad2d17f *tests/testthat/test-periods_to_long.R
 2bbaa35b1836c43c5d5f3c01b8289298 *tests/testthat/test-plot_continuous.R
 1128e576bfbd60390c35ed4bee98b7ab *tests/testthat/test-plot_inertia_from_tree.R
 44404711225572b5a8a7fdcb3963f58b *tests/testthat/test-plot_means.R
-eb5c12bfe5d7e876c512aad70ec05338 *tests/testthat/test-plot_multiple_answers.R
+8c20b2cbcbdbf6e39f66366bc53f2e9e *tests/testthat/test-plot_multiple_answers.R
 3e53b0a39628940918ce0e0cafdbc714 *tests/testthat/test-plot_proportions.R
 0655d8491e0b13a02bd01c7fcdd1a6e4 *tests/testthat/test-plot_trajectories.R
 c881b1396829db4d24014aadbf4e9d12 *tests/testthat/test-proportion.R
