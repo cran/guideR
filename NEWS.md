@@ -1,3 +1,25 @@
+# guideR 0.9.0
+
+**New features**
+
+* new experimental function `add_interactions_by_step()` to add potential
+  relevant interactions using `step()` (#60)
+* new function `long_to_seq()` to convert from long format to a sequence
+  object (#57)
+* new argument `missing_text` for `theme_gtsummary_prop_n()` and 
+  `theme_gtsummary_unweighted_n()` (#59)
+* new argument `overall_string` for `theme_gtsummary_prop_n()` (#59)
+
+**Improvements**
+
+* `style_grouped_tbl()` and `grouped_tbl_pivot_wider()` now accepts tables
+  generated with `gtsummary::tbl_stack()`
+* `plot_trajectories()` now accepts survey object (#57)
+
+**Bug fix**
+
+* bug fix in `theme_gtsummary_unweighted_n()`
+
 # guideR 0.8.1
 
 **Bug fix**

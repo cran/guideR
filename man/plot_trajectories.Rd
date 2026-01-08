@@ -33,21 +33,22 @@ plot_periods(
 )
 }
 \arguments{
-\item{data}{A data frame, or a data frame extension (e.g. a tibble).}
+\item{data}{A data frame, a data frame extension (e.g. a tibble), or a
+survey design object.}
 
-\item{id}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
+\item{id}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>\cr
 Column containing individual ids.}
 
-\item{time}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
+\item{time}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>\cr
 Time variable.}
 
-\item{fill}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
+\item{fill}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>\cr
 Variable mapped to \code{fill} aesthetic.}
 
-\item{by}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
+\item{by}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>\cr
 Optional variables to group by.}
 
-\item{sort_by}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>
+\item{sort_by}{<\code{\link[dplyr:dplyr_tidy_select]{tidy-select}}>\cr
 Optional variables to sort trajectories.}
 
 \item{nudge_x}{Optional amount of horizontal distance to move.}
@@ -78,6 +79,9 @@ represented with a width of 1. You can adjust tiles' width with \code{width}.
 variable. You can use \code{\link[=long_to_periods]{long_to_periods()}} to transform your data in such
 format. Beginning and ending of each tile is determined by \code{start} and
 \code{stop} arguments.
+
+For survey design objects, weights are not taken into account. Each
+individual trajectory as the same height.
 }
 \examples{
 d <- dplyr::tibble(
